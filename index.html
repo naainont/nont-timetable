@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>nont timetable</title>
+  <style>
+    :root {
+      --bg: #fbf8ff;
+      --paper: #ffffff;
+      --ink: #2c2440;
+      --muted: #7f7892;
+      --line: rgba(96, 75, 121, 0.16);
+      --line-strong: rgba(96, 75, 121, 0.26);
+      --purple-1: #f2e8ff;
+      --purple-2: #b48dd0;
+      --purple-3: #765a96;
+      --shadow: 0 18px 45px rgba(84, 53, 120, 0.16);
+      --start-width: 142px;
+      --row-height: 118px;
+      --empty-row-height: 76px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(255, 213, 236, 0.72), transparent 28%),
+        radial-gradient(circle at 90% 8%, rgba(222, 205, 255, 0.9), transparent 30%),
+        linear-gradient(135deg, #fff9fb 0%, var(--bg) 55%, #f6fbff 100%);
+      color: var(--ink);
+      font-family: "Inter", "Noto Sans Thai", "Prompt", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 22px;
+    }
+
+    .wrap {
+      width: min(100%, 1660px);
+      margin: 0 auto;
+    }
+
+    .planner {
+      min-width: 1320px;
+      border: 1px solid rgba(118, 90, 150, 0.25);
+      border-radius: 26px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.74);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .titlebar {
+      height: 78px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 26px;
+      background:
+        radial-gradient(circle at 97% 28%, rgba(255, 255, 255, 0.75), transparent 11%),
+        linear-gradient(90deg, #efe4ff 0%, #f5ebff 52%, #eadbff 100%);
+      border-bottom: 1px solid var(--line-strong);
+      position: relative;
+    }
+
+    .titlebar::after,
+    .titlebar::before {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 28px -10px 0 rgba(255, 255, 255, 0.55), 52px 13px 0 rgba(255, 255, 255, 0.42);
+    }
+
+    .titlebar::after {
+      width: 7px;
+      height: 7px;
+      right: 48px;
+      top: 22px;
+    }
+
+    .titlebar::before {
+      width: 4px;
+      height: 4px;
+      right: 82px;
+      top: 45px;
+    }
+
+    .calendar-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 15px;
+      background: linear-gradient(150deg, #8b60c8, #d28ad8);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 8px 18px rgba(105, 70, 142, .2);
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .calendar-mark::before {
+      content: "";
+      position: absolute;
+      left: 11px;
+      top: 13px;
+      width: 26px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: inset 0 7px 0 rgba(255, 115, 173, 0.72);
+    }
+
+    .calendar-mark::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      top: 25px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #9e7bd0;
+      box-shadow: 9px 0 0 #9e7bd0, 0 8px 0 #9e7bd0, 9px 8px 0 #9e7bd0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(27px, 2.4vw, 38px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #4c356d;
+      font-weight: 850;
+    }
+
+    .table {
+      display: grid;
+      grid-template-columns: var(--start-width) 1fr;
+      background: rgba(255,255,255,0.82);
+    }
+
+    .corner,
+    .timebar {
+      height: 50px;
+      background: linear-gradient(180deg, #a77cc0, #8c69aa);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(80, 54, 104, 0.25);
+    }
+
+    .corner {
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      border-right: 1px solid rgba(255,255,255,0.22);
+    }
+
+    .timebar {
+      position: relative;
+      min-height: 50px;
+      overflow: visible;
+    }
+
+    .timebar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(to right, rgba(255,255,255,0.18) 0 1px, transparent 1px calc(100% / 12));
+      opacity: .7;
+    }
+
+    .time-label {
+      position: absolute;
+      top: 50%;
+      left: var(--x);
+      transform: translate(-50%, -50%);
+      font-weight: 800;
+      font-size: 18px;
+      white-space: nowrap;
+      text-shadow: 0 1px 0 rgba(0,0,0,.1);
+    }
+
+    .time-label.first { transform: translate(0, -50%); }
+    .time-label.last { transform: translate(-100%, -50%); }
+
+    .daycell {
+      height: var(--row-height);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      border-right: 1px solid var(--line-strong);
+      border-bottom: 1px solid var(--line);
+      font-weight: 850;
+      font-size: 23px;
+      letter-spacing: -0.02em;
+      position: relative;
+    }
+
+    .daycell.empty { height: var(--empty-row-height); }
+
+    .daycell::after {
+      content: "";
+      width: 28px;
+      height: 4px;
+      margin-top: 10px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: .35;
+    }
+
+    .mon { color: #f39b00; background: linear-gradient(90deg, rgba(255, 245, 218, .92), rgba(255,255,255,.75)); }
+    .tue { color: #ef4d9b; background: linear-gradient(90deg, rgba(255, 232, 244, .92), rgba(255,255,255,.75)); }
+    .wed { color: #13b896; background: linear-gradient(90deg, rgba(224, 250, 244, .92), rgba(255,255,255,.75)); }
+    .thu { color: #ff6f21; background: linear-gradient(90deg, rgba(255, 240, 226, .92), rgba(255,255,255,.75)); }
+    .fri { color: #238fe1; background: linear-gradient(90deg, rgba(228, 243, 255, .92), rgba(255,255,255,.75)); }
+    .sat { color: #7b61d6; background: linear-gradient(90deg, rgba(239, 235, 255, .92), rgba(255,255,255,.75)); }
+    .sun { color: #ef3b41; background: linear-gradient(90deg, rgba(255, 235, 236, .92), rgba(255,255,255,.75)); }
+
+    .timeline {
+      height: var(--row-height);
+      position: relative;
+      border-bottom: 1px solid var(--line);
+      background:
+        repeating-linear-gradient(to right, rgba(96, 75, 121, 0.13) 0 1px, transparent 1px calc(100% / 12)),
+        linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.75));
+    }
+
+    .timeline.empty {
+      height: var(--empty-row-height);
+      background:
+        repeating-linear-gradient(to right, rgba(96, 75, 121, 0.10) 0 1px, transparent 1px calc(100% / 12)),
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255, 250, 255, .66));
+    }
+
+    .class-card {
+      position: absolute;
+      top: 9px;
+      bottom: 9px;
+      left: var(--left);
+      width: var(--width);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 9px;
+      border-radius: 12px;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 10px 22px rgba(40, 30, 54, 0.12), inset 0 1px 0 rgba(255,255,255,.42);
+      border: 1px solid rgba(255, 255, 255, 0.38);
+    }
+
+    .class-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.22), transparent 43%, rgba(0,0,0,.08));
+      pointer-events: none;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+    }
+
+    .enrolled {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 6px;
+      font-weight: 850;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .check {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid currentColor;
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .course {
+      font-weight: 800;
+      font-size: 13.5px;
+      line-height: 1.3;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 0 rgba(0,0,0,.12);
+    }
+
+    .code,
+    .room {
+      font-weight: 750;
+      font-size: 12.8px;
+      line-height: 1.28;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 0 rgba(0,0,0,.12);
+    }
+
+    .red { background: linear-gradient(135deg, #ff4d65, #d81e3b); }
+    .light-green { background: linear-gradient(135deg, #d9f8d0, #99e78d); color: #14761c; border-color: rgba(40, 151, 44, .24); }
+    .green { background: linear-gradient(135deg, #1ec246, #08751e); }
+    .blue { background: linear-gradient(135deg, #82b8ff, #427ed0); }
+    .cyan { background: linear-gradient(135deg, #1bc9f3, #087dcc); }
+    .teal { background: linear-gradient(135deg, #55dccc, #20a999); }
+    .orange { background: linear-gradient(135deg, #ff944d, #ff671f); }
+
+    .footer-note {
+      padding: 10px 18px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      background: rgba(255,255,255,.68);
+      text-align: right;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 10px; }
+      .planner { min-width: 1180px; border-radius: 18px; }
+      .wrap { overflow-x: auto; padding-bottom: 10px; }
+      .titlebar { height: 66px; }
+      .calendar-mark { width: 42px; height: 42px; }
+      h1 { font-size: 28px; }
+      :root { --start-width: 124px; --row-height: 110px; }
+      .daycell { font-size: 20px; }
+      .time-label { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="planner" aria-label="ตารางเรียนจำลอง">
+      <header class="titlebar">
+        <div class="calendar-mark" aria-hidden="true"></div>
+        <h1>ตารางเรียนจำลอง</h1>
+      </header>
+
+      <div class="table">
+        <div class="corner">วัน / เวลา</div>
+        <div class="timebar" aria-hidden="true">
+          <span class="time-label first" style="--x:0%">7:00</span>
+          <span class="time-label" style="--x:8.333333%">8:00</span>
+          <span class="time-label" style="--x:16.666667%">9:00</span>
+          <span class="time-label" style="--x:25%">10:00</span>
+          <span class="time-label" style="--x:33.333333%">11:00</span>
+          <span class="time-label" style="--x:41.666667%">12:00</span>
+          <span class="time-label" style="--x:50%">13:00</span>
+          <span class="time-label" style="--x:58.333333%">14:00</span>
+          <span class="time-label" style="--x:66.666667%">15:00</span>
+          <span class="time-label" style="--x:75%">16:00</span>
+          <span class="time-label" style="--x:83.333333%">17:00</span>
+          <span class="time-label" style="--x:91.666667%">18:00</span>
+          <span class="time-label last" style="--x:100%">19:00</span>
+        </div>
+
+        <div class="daycell mon">Monday</div>
+        <div class="timeline">
+          <article class="class-card red" style="--left:8.333333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Physics for Engineering Stude...</div>
+              <div class="code">207105 (001-000)</div>
+              <div class="room">Room: PBI-330, 0800 - 0930</div>
+            </div>
+          </article>
+          <article class="class-card light-green" style="--left:50%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Principle of Being Professional</div>
+              <div class="code">259191 (000-402)</div>
+              <div class="room">Room: Slope EG3-001, 1300 - ...</div>
+            </div>
+          </article>
+          <article class="class-card green" style="--left:62.5%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Citizenship</div>
+              <div class="code">140104 (005-000)</div>
+              <div class="room">Room: Online, 1430 - 1600</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="daycell tue">Tuesday</div>
+        <div class="timeline">
+          <article class="class-card blue" style="--left:20.833333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Discrete Mathematics for Co...</div>
+              <div class="code">261216 (013-000)</div>
+              <div class="room">Room: 711, 0930 - 1100</div>
+            </div>
+          </article>
+          <article class="class-card cyan" style="--left:33.333333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Fundamental English 1</div>
+              <div class="code">001101 (156-000)</div>
+              <div class="room">Room: RB5408, 1100 - 1230</div>
+            </div>
+          </article>
+          <article class="class-card blue" style="--left:62.5%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Discrete Mathemat...</div>
+              <div class="code">261216 (013-000)</div>
+              <div class="room">Room: 413A, 1430 - ...</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="daycell wed">Wednesday</div>
+        <div class="timeline">
+          <article class="class-card teal" style="--left:50%; --width:41.666667%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Basic Computer Engineering</div>
+              <div class="code">261103 (001-000)</div>
+              <div class="room">Room: 516, 1300 - 1800</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="daycell thu">Thursday</div>
+        <div class="timeline">
+          <article class="class-card red" style="--left:8.333333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Physics for Engineering Stude...</div>
+              <div class="code">207105 (001-000)</div>
+              <div class="room">Room: PBI-330, 0800 - 0930</div>
+            </div>
+          </article>
+          <article class="class-card orange" style="--left:20.833333%; --width:25%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Engineering Drawing[Lab]</div>
+              <div class="code">259104 (000-007)</div>
+              <div class="room">Room: 2-404, 0930 - 1230</div>
+            </div>
+          </article>
+          <article class="class-card green" style="--left:62.5%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Citizenship</div>
+              <div class="code">140104 (005-000)</div>
+              <div class="room">Room: Online, 1430 - 1600</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="daycell fri">Friday</div>
+        <div class="timeline">
+          <article class="class-card blue" style="--left:20.833333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Discrete Mathematics for Co...</div>
+              <div class="code">261216 (013-000)</div>
+              <div class="room">Room: 711, 0930 - 1100</div>
+            </div>
+          </article>
+          <article class="class-card cyan" style="--left:33.333333%; --width:12.5%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Fundamental English 1</div>
+              <div class="code">001101 (156-000)</div>
+              <div class="room">Room: RB5408, 1100 - 1230</div>
+            </div>
+          </article>
+          <article class="class-card teal" style="--left:54.166667%; --width:16.666667%;">
+            <div class="card-inner">
+              <div class="enrolled"><span class="check">✓</span> Enrolled</div>
+              <div class="course">Basic Computer Engineering[Time2]</div>
+              <div class="code">261103 (001-000)</div>
+              <div class="room">Room: 516, 1330 - 1530</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="daycell sat empty">Saturday</div>
+        <div class="timeline empty"></div>
+
+        <div class="daycell sun empty">Sunday</div>
+        <div class="timeline empty"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
